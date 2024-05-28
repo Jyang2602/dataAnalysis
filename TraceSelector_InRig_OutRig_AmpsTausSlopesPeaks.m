@@ -3,6 +3,7 @@ close all;
 
 % Set this variable to true for inside rig, false for outside rig
 RIG_IN = true;
+SAVE_CELL = true;
 
 selecting_files = true;
 
@@ -230,7 +231,7 @@ while selecting_files
         DATA.expCondTested = condOrder;
 
         goodcell = input('Do you want to save this cell (y/n): ', 's');
-        if goodcell == 'y'
+        if strcmpi(goodcell, 'y')
             save(saveFilePostFix, 'DATA');
             disp(['Saved ' saveFilePostFix]);
         end
