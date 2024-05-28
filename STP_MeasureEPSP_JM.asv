@@ -1,0 +1,197 @@
+function [Amps Slopes tau Peaks] = STP_MeasureEPSP(trace,stimtimes,dt)
+% trace with EPSPs
+% stimtimes of presynaptic events
+% SR = sampling rate
+
+GRAPHICS = 1;
+BASELINE_MIN = true;
+USE_DECAYBL = true;
+
+DECAY_WINSTART = 5;  % start tracking decay this many points after the previous peak in ms
+DECAY_WINEND = 0;  % stop tracking decay this many points before the next peak %default: 10 ms
+DECAY_PLOT_LEN     = 60 ;
+
+
+SLOPE_THRESH = 0.1;  % minimum slope to be considered an event %default: 0.01
+SLOPE_WIDTH = 2;  % duration of window in ms to find slope %default: 3
+SMOOTH_WIDTH = 3;  % width of smoothing window in ms %default: 1.5
+PSP_WINDOW = [5 30];  % window around putative PSP to assess slope and max, in ms DEPENDENT ON STIM FREQUENCY
+BASELINE_WINDOW = [-20 -5];  % window from first PSP to  assess baseline voltage
+DECAY_GUESS = -100;  % guess for PSP decay tau
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+figure(1);
+set(gcf, 'color', 'w');
+
+button = 0;
+
+while button~=1
+
+   clf; hold on;
+
+   %%% TIME AXIS %%%
+   time = dt:dt:(length(trace) * dt);
+   maxt = time(length(time));
+
+
+   %SMOOTHTRACE WITH 3 ms windows (+/- 1.5ms)
+   smtrace = SMOOTHTRACE(trace, SMOOTH_WIDTH / dt);
+
+   %Plot trace
+   plot(time, smtrace, 'k', 'linewidth', 2);
+   hold on
+
+   xlim([time(stimtimes(1))-100 time(stimtimes(end))+200])
+   % FOR EACH PSP
+   allBaselines = [];
+   monoPeak = [];
+
+   for j = 1:length(stimtimes)
+
+      %%% FIND MONO SLOPES MAX %%%
+      window = stimtimes(j) + PSP_WINDOW(1)/dt:stimtimes(j) + PSP_WINDOW(2)/dt;
+      [monoSlope(j), monoStart(j), monoEnd(j)] = SLOPEX(smtrace(window), SLOPE_WIDTH / dt);
+      monoSlope(j) = monoSlope(j)/dt;  %Convert all slope measure to mV/ms
+      monoStart(j) = monoStart(j) + window(1); monoEnd(j) = monoEnd(j) + window(1);
+      line([monoStart(j) * dt, monoEnd(j) * dt], [smtrace(monoStart(j)), smtrace(monoEnd(j))], 'linewidth', 3, 'color', [0.5, 1, 1]);
+
+      %%% FIND LATENCY AND PEAK OF MONO %%%
+      [val, ind] = max(smtrace(window));
+      peak(j) = val; peakstart(j) = ind + window(1) - 1;
+      plot(peakstart(j)*dt, peak(j), 'marker', 'o', 'markersize', 4, 'markerfacecolor', 'r', 'markeredgecolor', 'r', 'linewidth', [1]);
+      peaks(j) = peak(j);
+
+      % assess baseline voltage
+      commonBaseline = mode(smtrace);
+      %         ylim([commonBaseline-1 commonBaseline+15]);
+      minvolt = min(smtrace(6000:16000));
+      bl = input('Do you want to use baseline or minimum for fits? enter "base" or "min":')
+
+      if BASELINE_MIN
+          baseline = minvolt;
+         % if j == 1
+         %    % baseline = min(smtrace(stimtimes(j) - 15:stimtimes(j)));
+         %    baseline = minvolt;
+         % else
+         %    % baseline = min(smtrace(stimtimes(j - 1):stimtimes(j)));
+         % 
+         % end
+      else
+         baseline = median(smtrace(stimtimes(1)+BASELINE_WINDOW(1)/dt:stimtimes(1)+BASELINE_WINDOW(2)/dt));
+         % mini = min(smtrace);
+         % if mini < baseline 
+         % 
+         %    baseline = (baseline+mini)/2;
+         % end
+      end
+
+
+      % minvolt = min(smtrace(6000:16000));
+      %%% IF SECOND MONO THEN CALCULATE PREVIOUS MONO DECAY
+      if j >= 2
+
+         % make window used for calcuation in between events
+         startDecaySeg = peakstart(j-1) + DECAY_WINSTART / dt;
+         endDecaySeg = stimtimes(j) - DECAY_WINEND / dt;
+         %             endDecaySeg = peakstart(j) - DECAY_WINEND / dt;
+         decaySeg = smtrace(startDecaySeg:endDecaySeg);
+         
+         bottomDecaySeg = decaySeg(length(decaySeg));
+
+         % do the fit
+         
+         guess = [DECAY_GUESS];
+         dY = decaySeg(1) - baseline;
+         
+         %x = predictor variable, y = response variables
+         [coef, R1, J1] = nlinfit(0:length(decaySeg)-1, (decaySeg - baseline)/dY, @ExpDecay2, guess);
+%          [coef, R1, J1] = nlinfit(0:length(decaySeg)-1, (decaySeg), @ExpDecay2, guess);
+
+         % plot fit
+         x = 0:length(time);
+         decay = (ExpDecay2(coef, x) * dY) + baseline;
+         plot(time(x(1:(DECAY_PLOT_LEN/dt))+startDecaySeg), decay(1:(DECAY_PLOT_LEN/dt)), 'g', 'linewidth', 1);
+         plot(time(x(1:length(decaySeg/dt))+startDecaySeg), decaySeg, 'r', 'linewidth', 3);
+         %             plot(time(x(1:(DECAY_WINEND/dt))+startDecaySeg), decay(1:(DECAY_WINEND/dt)), 'r', 'linewidth', 3);
+         plot([stimtimes*dt; stimtimes*dt],repmat(ylim',1,size(stimtimes,2)),'--k');
+
+         % record resulting estimates of baseline and tau
+         if USE_DECAYBL
+            baseline = decay(peakstart(j)-startDecaySeg);
+         else
+            baseline = mean([baseline decay(peakstart(j)-startDecaySeg)]);
+         end
+         
+
+         tau(j-1) = coef;
+      else
+         tau(j) = DECAY_GUESS;
+      end
+
+      % record peak
+      monoPeak(j) = peak(j) - baseline;
+
+      % draw its height
+      line([peakstart(j), peakstart(j)]*dt, [baseline, peak(j)], 'color', 'b');
+
+      allBaselines(end + 1) = baseline;
+
+
+
+   end % stimtimes (num of pulses)
+
+
+   fprintf('MonoPeak= '); fprintf('%6.2f', monoPeak); fprintf('   ('); fprintf('%6.2f', monoPeak./monoPeak(1)); fprintf(')\n');
+   fprintf('MonoSlope='); fprintf('%6.2f', monoSlope); fprintf('   ('); fprintf('%6.2f', monoSlope./monoSlope(1)); fprintf(')\n\n');
+
+
+   fprintf('Accept = Left | Reject = Right\n');
+   [a b button] = ginput(1);
+
+   if button == 3
+      str = sprintf('New values for DECAY_WINSTART(%d) and DECAY_WINDEND(%d) and DECAY_PLOT_LEN(%d):',DECAY_WINSTART,DECAY_WINEND, DECAY_PLOT_LEN)
+      % str = sprintf('New values for DECAY_WINSTART(%d) and DECAY_WINDEND(%d):',DECAY_WINSTART,DECAY_WINEND)
+      val = str2num(input(str,'s'));
+      DECAY_WINSTART = val(1);
+      DECAY_WINEND = val(2);
+      DECAY_PLOT_LEN = val(3);
+      try 
+         startDecaySeg = peakstart(j-1) + DECAY_WINSTART / dt;
+         endDecaySeg = stimtimes(j) - DECAY_WINEND / dt;
+
+         decaySeg = smtrace(startDecaySeg:endDecaySeg);
+
+         bottomDecaySeg = decaySeg(length(decaySeg));
+      catch
+          disp('Error in values you entered, values turing to original values: 5 , 0 , 60')
+          DECAY_WINSTART = 5;  % start tracking decay this many points after the previous peak in ms
+          DECAY_WINEND = 0;  % stop tracking decay this many points before the next peak %default: 10 ms
+          DECAY_PLOT_LEN     = 60 ;
+      end
+
+
+
+   end
+
+
+
+end
+   Amps = monoPeak;
+   Slopes = monoSlope;
+   Peaks = peaks - minvolt;
+
+   % meanBaseline = mean(allBaselines);
+   %
+   % % normalize trace
+   % traceNorm = (smtrace - meanBaseline) ./ (monoPeak(1));
+   % normTraceAll = traceNorm;
+   %
+   % fprintf('MonoPeak= '); fprintf('%6.2f', monoPeak); fprintf('   ('); fprintf('%6.2f', monoPeak./monoPeak(1)); fprintf(')\n');
+   % fprintf('MonoSlope='); fprintf('%6.2f', monoSlope); fprintf('   ('); fprintf('%6.2f', monoSlope./monoSlope(1)); fprintf(')\n\n');
+   %
+   % if median(Trace) > 0
+   %    set(gca, 'YDir','reverse');
+   % end
+
+
