@@ -2,7 +2,7 @@ clear;
 close all;
 
 % Set this variable to true for inside rig, false for outside rig
-RIG_IN = false;
+RIG_IN = true;
 
 selecting_files = true;
 
@@ -183,8 +183,10 @@ while selecting_files
                     DATA.(ExpCondition_text).keepTraces = tracesKept;
                     DATA.(ExpCondition_text).TraceAll = single(TraceAll);
                     DATA.(ExpCondition_text).nAclamp = nA;
+                    if strcmp(drug,'yes')
                     
                     DATA.(ExpCondition_text).drugActive = drugActive;
+                    end
                     
                     DATA.(ExpCondition_text).StimInten = stimInten;
                     DATA.(ExpCondition_text).TTL = single(TTL);
