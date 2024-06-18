@@ -3,6 +3,7 @@ close all;
 
 % Set this variable to true for inside rig, false for outside rig
 RIG_IN = true;
+SAVE_CELL = true;
 
 selecting_files = true;
 
@@ -87,9 +88,11 @@ while selecting_files
             DATA.drugType = drugType;
             DATA.drugConc = drugConc;
         end
+        figure('Position', [100, 100, 1200, 1000]);
+        % clf;
 
         for loop = 1:numindexes
-            close all;
+            % close all;
             current_index = condind(loop);
             ExpCondition = condOrder{current_index};
             ExpCondition_text = ExpCondition;
@@ -102,7 +105,9 @@ while selecting_files
             nA = nAclamp{current_index};
             nTraces = length(CH1{current_index}(:, 1));
             TraceAll = (CH1{current_index});
+            if strcmp(drug,'yes')
             drugActive = drugTrial{current_index};
+            end
 
             if RIG_IN
                 TTLAll = (CH3{current_index}); % For inside rig
@@ -114,6 +119,7 @@ while selecting_files
             normTraceAll = zeros(size(TraceAll));
             selected_one = false;
             stimInten = condInten{current_index};
+            
 
             for traceInd = 1:nTraces
                 Trace = squeeze(TraceAll(traceInd, :));
@@ -139,6 +145,7 @@ while selecting_files
 
                 % Plot trace and account for different length in
                 % excitability and light pulses
+                
                 if length(Trace) < 11000
                     plot(time(1:8000), Trace(1:8000), 'k', 'linewidth', 2);
                 else
@@ -179,13 +186,15 @@ while selecting_files
                     DATA.(ExpCondition_text).keepTraces = tracesKept;
                     DATA.(ExpCondition_text).TraceAll = single(TraceAll);
                     DATA.(ExpCondition_text).nAclamp = nA;
+                    if strcmp(drug,'yes')
                     
                     DATA.(ExpCondition_text).drugActive = drugActive;
+                    end
                     
                     DATA.(ExpCondition_text).StimInten = stimInten;
                     DATA.(ExpCondition_text).TTL = single(TTL);
 
-                    index = 1:nTraces;
+                    index = 1:nTracmnm, .0es;
                     tracestokeep = ismember(index, tracesToDelete);
                     tracestokeep = index(~tracestokeep);
                     keepTraceMean = mean(TraceAll(tracestokeep, :));
@@ -206,6 +215,7 @@ while selecting_files
                     DATA.(ExpCondition_text).slopes = single(Slopes);
                     DATA.(ExpCondition_text).taus = single(tau);
                     DATA.(ExpCondition_text).epspPeaks = single(Peaks);
+                    
                     end
                 else
                     DATA.(ExpCondition_text).TraceAll = single(TraceAll);
@@ -224,7 +234,7 @@ while selecting_files
         DATA.expCondTested = condOrder;
 
         goodcell = input('Do you want to save this cell (y/n): ', 's');
-        if goodcell == 'y'
+        if strcmpi(goodcell, 'y')
             save(saveFilePostFix, 'DATA');
             disp(['Saved ' saveFilePostFix]);
         end

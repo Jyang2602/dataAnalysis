@@ -1,0 +1,111 @@
+%% show user options of which cell types, training, and stimulus are curretnly available in meanPlots structure%
+load('meanPlots.mat');
+disp('Please select which cell types/training and stimulus combo you would like to plot: ')
+for i = 1:length(options)
+fprintf('%d: %s %s\n', i, options{i}, stimulus{i});
+end
+
+%plot chosen index
+plotIndex =input('Enter the numbers of which two conditions you would like to plot and run SEM on: ex "[1 2]" ');
+meanT = cell2mat({meanPlots(plotIndex).meanTrace}');
+normMeanT = cell2mat({meanPlots(plotIndex).normMeanTrace}');
+
+
+
+% if contains(meanPlots(plotIndex(1)).cellTrain, 'Early')
+    traceAll1 = (meanPlots(plotIndex(1)).zeroTraces);
+    traceAll2 = (meanPlots(plotIndex(2)).zeroTraces);
+
+    normTraceAll1 =(meanPlots(plotIndex(1)).normZeroTraces);
+    normTraceAll2=(meanPlots(plotIndex(2)).normZeroTraces);
+
+    meanTrace1 =meanPlots(plotIndex(1)).meanTrace;
+    meanTrace2 =meanPlots(plotIndex(2)).meanTrace;
+
+    normTrace1 =meanPlots(plotIndex(1)).normMeanTrace;
+    normTrace2 =meanPlots(plotIndex(2)).normMeanTrace;
+    
+    n1 = meanPlots(plotIndex(1)).n;
+    n2 = meanPlots(plotIndex(2)).n;
+
+    tau1 = mean(meanPlots(plotIndex(1)).Tau);
+    tau1 = mean(meanPlots(plotIndex(2)).Tau);
+
+    slope1 = mean(meanPlots(plotIndex(1)).Slope);
+    slope2 = mean(meanPlots(plotIndex(2)).Slope);
+
+
+
+
+
+
+color1 = [255, 182, 193] / 255;  % Light Pink
+color2 = [173, 216, 230] / 255;  % Light Blue
+normY = input('Would you like to plot the normalized or non-normalized traces? enter 1 for normalized and 0 for non-normalized:')
+figure;
+if normY ==1
+
+[semE, semL,taxis] = makeSEMData(normTraceAll1,normTraceAll2);
+
+% figure
+subplot(2,1,1)
+
+FillSemPlot(taxis, normTrace1,0,semE,color1);
+FillSemPlot(taxis, normTrace2,0,semL,color2);
+
+plot(normTrace1, 'r-');  % Plot Early 12 in blue
+plot(normTrace2, 'b-');
+
+normText = 'Normalized plot';
+
+
+else
+
+[semE, semL,taxis] = makeSEMData(traceAll1,traceAll2);
+
+subplot(2,1,1)
+FillSemPlot(taxis, meanTrace1,0,semE,color1);
+hold on;  % Hold on to plot multiple traces
+FillSemPlot(taxis, meanTrace2,0,semL,color2);
+plot(meanTrace1, 'r-');  % Plot Early 12 in blue
+plot(meanTrace2, 'b-');
+normText = 'non-normalized plot';
+
+end
+
+
+
+
+title1 = options{plotIndex(1)};
+title2 = options{plotIndex(2)};
+% titleText = strcat(options{plotIndex(1)},  'VS   ', options{plotIndex(2)});
+
+titleText = strcat(title1, ' VS  ', title2);
+
+title(titleText, normText)
+if contains(title1, 'Early')
+    leg1 = strcat('Early: ','n = ' ,n1 );
+else
+    leg1  = strcat("Late:  ", 'n=  ', n2);
+end
+
+if contains(title2, 'Early')
+    leg2 = strcat('Early: ','n = ' ,n1);
+else
+    leg2  = strcat("Late:  ", 'n=  ', n2);
+end
+
+% 
+% legE = strcat('Early: ','n = ' ,n1);
+% legL = strcat("Late:  ", 'n=  ', n2);
+legend(leg1,, leg2)
+
+
+subplot(2,1,2)
+% title(strcat('Slopes', title1, 'V.  ', title2));
+title("Slopes")
+hold on
+plot(slope1, 'b-');
+plot(slope2,'r-');
+legend(leg1,leg2);
+

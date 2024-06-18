@@ -1,0 +1,204 @@
+
+%% Compile cfs batch data (excitability, spontaneous, connectivity, etc.) into one .mat file per cell
+
+%Last updated 06/29/2022 BL
+
+clear;
+% cfs2mat %script for conversion %MAGIC_SCALING_NUMBER = 0.0030556;
+MAGIC_SCALING_NUMBER = 0.0030556;
+
+ORGANOTYPIC = 1;
+SAVE = 1;
+stimStrings = {'12LATE', '12EARLY', '6LATE', '6EARLY'};
+%% Input general information & initiate variables
+
+[fName, matDir] = uigetfile({'*.mat','mat files (*.mat)'}, ...
+    'Choose a file to load','multiselect','on');
+
+if numel(fName) == 1 & all(fName == 0)
+    error('No valid file selected');
+end
+
+if isstr(fName)
+    fName = {fName};
+end
+
+numConds = length(fName);
+stimStrings = {'12LATE', '12EARLY', '6LATE', '6EARLY'};
+
+if ORGANOTYPIC
+    disp(fName)
+    DIV = input('DIV = ','s');
+    
+
+
+    %     cutDate = input('Date of cutting (YYMMDD) = ','s');
+    transDur = input('What DIV was the cell transduced? = ','s');
+    transfectedVirus = input('What virus was transfected? = ','s');
+
+    stimulated = input('Was this slice chronically stimulated yes/no = ','s');
+    
+    FLAG = false;
+
+    if strcmp(stimulated,'yes') == 1
+        while ~FLAG
+            stimProtocol = input('What was the stim protocol? Enter 1 for 12LATE, 2 for 12EARLY, 3 for 6ALTE, 4 for 6EARLY ','s'); %EARLYPOST or LATEPOST
+            str1 = stimProtocol;
+            if any(strcmp(stimProtocol,stimStrings))
+                FLAG = true
+            else
+                disp('Invalid stimProtocol. Please enter one of the following:')
+                disp(stimStrings)
+            end
+        end
+        trainDur = input("How long was the slice trained for: (hrs)");
+    else
+        str1= 'non stimulated'
+    end
+
+    pair = input('Was this a paired recording yes/no = ','s');
+
+    if strcmp(pair,'yes') == 1
+        cell1Type = input('What type of cell was recorded by electrode 1?\n "Pyr" , "ChR2", "Chrim" ','s');
+        cell2Type = input('What type of cell was recorded by electrode 2?\n "Pyr" , "ChR2", "Chrim"','s');
+        distanceCells = input('Distance between the two recorded cells in uM = ','s');
+    else
+        cell1Type = input('What type of cell was recorded by electrode 1?\n','s');
+    end
+    drug = input("Were drugs used for this cell? yes/no", 's');
+    if strcmp(drug, 'yes') ==1
+        drugType = input('What drug was used? Enter "drug/concentration (in uL)" ','s');
+        drugConc = input('What was the concentration of the drug used?', 's');
+    end
+end
+
+
+%% Loop through relevant conditions in experiment
+for condLoop = 1:numConds
+    clear samplerate numpoints numtraces numchannels dataheader data1 data2 data3 ch1 ch2 ch3
+
+    filename = [matDir fName{condLoop}];
+
+
+    %% Open, read, parse file
+    load(filename);
+    fileC = split(filename,'_');
+    fileC = join(fileC(8:end),'_');
+    fprintf('Reading file %s\n',fileC{1});
+
+    if D.param.channels == 1
+        CH1{condLoop} = squeeze(D.data(:,:,1) .* (MAGIC_SCALING_NUMBER ./ D.param.yScale(1)))';
+    elseif D.param.channels == 2
+        CH1{condLoop} = squeeze(D.data(:,:,1) .* (MAGIC_SCALING_NUMBER ./ D.param.yScale(1)))';
+        CH2{condLoop} = squeeze(D.data(:,:,2) .* (MAGIC_SCALING_NUMBER ./ D.param.yScale(2)))';
+    elseif D.param.channels == 3
+        CH1{condLoop} = squeeze(D.data(:,:,1) .* (MAGIC_SCALING_NUMBER ./ D.param.yScale(1)))';
+        CH2{condLoop} = squeeze(D.data(:,:,2) .* (MAGIC_SCALING_NUMBER ./ D.param.yScale(2)))';
+        CH3{condLoop} = squeeze(D.data(:,:,3) .* (MAGIC_SCALING_NUMBER ./ D.param.yScale(3)))';
+    elseif ismatrix(D.data)
+        CH1{condLoop} = squeeze(D.data .* (MAGIC_SCALING_NUMBER ./ D.param.yScale(1)))';
+    end
+
+    fprintf('CH1 size = %d x %d\n',size(CH1{condLoop}))
+     half=length(CH1{condLoop})/10;
+    plot(CH1{condLoop}(:,1:half)');
+        GOOD = false;
+    while ~GOOD
+    condOrder{condLoop} = input('Which condition is this (EXC_, EARLYPOST, LATEPOST, SPONT_, ABOVE_numColor, BELOW_numColor) = ','s');
+   
+
+
+
+    samplingRate = D.param.xScale(1)*1000; %this is dt in ms
+    sampleRate{condLoop} = samplingRate;
+
+    %% USER INPUT OF CURRENT INTENSITIES %%
+
+    if strfind(condOrder{condLoop},'EXC_') > 0
+        currentSteps = input('Intensity steps for excitability (nA) (99 for ERRORS) ','s'); %spaces inbetween inten values  Ex: -0.1 0.05 0.1 0.15 0.2
+        excitIntens{condLoop} = str2num(currentSteps);
+        nAclamp{condLoop} = input('Enter current in nA, of none enter 0: ');
+    end
+    %Characterizing stimulus condition type and intensity
+    if startsWith(condOrder{condLoop}, 'ABOVE_')
+        condInten{condLoop} = input('What was the light intensity of the stimulus in mA?');
+        if strcmp(drug,'yes')
+
+        drugTrial{condLoop} = input("was there drug active for this condition? yes/no", 's');
+        
+        end
+        % drugTrial{condLoop} = input("was there drug active for this condition? yes/no", 's');
+        nAclamp{condLoop} = input('Enter current in nA, of none enter 0: ');
+       
+    end
+    if startsWith(condOrder{condLoop},"BELOW_")
+        condInten{condLoop} = input('What was the light intensity of the stimulus in mA?');
+        if strcmp(drug,'yes')
+        drugTrial{condLoop} = input("was there drug active for this condition? yes/no", 's');
+        end
+        nAclamp{condLoop} = input('Enter current in nA, of none enter 0: ');
+       
+    end
+    redo = input('Would you like to redo any paramters? Press 1 for yes and 0 to move on');
+    if redo ==1
+        GOOD= false;
+    else
+        GOOD = true;
+    end
+    end
+end
+
+% if strcmp(stimulated,'yes') == 1
+%     if stimProtocol == '1'
+%         str1 = stimStrings{1};
+%         stimProtocol = stimStrings{1};
+%     elseif stimProtocol  == '2'
+%         str1 = stimStrings{2};
+%         stimProtocol = stimStrings{2};
+%     elseif stimProtocol == '3'
+%         str1 = stimStrings{3};
+%         stimProtocol = stimStrings{3};
+%     elseif stimProtocol == '4'
+%         str1 = stimStrings{4};
+%         stimProtocol = stimStrings{4};
+%     end
+%
+%
+%     % if strcmp(stimProtocol,'EARLYPOST') == 1
+%     %     str1 = 'EARLYPOST'
+%     % elseif strcmp(stimProtocol,'LATEPOST') == 1
+%     %     str1 = 'LATEPOST'
+%     % elseif strcmp(stimProtocol, 'VERYLATE') == 1
+%     %     str1 = 'VERYLATE'
+%     % elseif strcmp(stimProtocol, '12EARLY') == 1
+%     %     str1 = '12EARLY'
+%     % elseif strcmp(stimProtocol, '12LATE')==1
+%     %     str1 = '12LATE'
+%     % elseif strcmp(stimProtocol, '6LATE')==1
+%     %     str1 = '6LATE'
+%     % elseif strcmp(stimProtocol, '6EARLY')==1
+%     %     str1 = '6EARLY'
+%     % end
+%
+%
+% else
+%     str1 = 'nonstimulated'
+%
+% end
+
+str2 = fName{1}(1:15);
+saveFilePrefix = sprintf('COMPILED_%s_%s',str1,str2);
+
+clearvars -EXCEPT DIV cutDate mouseGenotype transfectionDate ...
+    transfectedVirus durTrans distancePia distanceCells daysStimulated stimProtocol ...
+    cell1Type cell2Type drug drugType drugConc exitPotential ...
+    saveFilePrefix CH1 CH2 CH3 sampleRate condOrder excitIntens stimulated ...
+    pair SAVE fName condInten condSource trainDur  drugTrial nAclamp
+
+%% SAVE ALL DATA TO A *.mat FILE %%
+fprintf('Saving file as %s.mat\n', saveFilePrefix)
+
+if SAVE
+    save(saveFilePrefix)
+else
+end

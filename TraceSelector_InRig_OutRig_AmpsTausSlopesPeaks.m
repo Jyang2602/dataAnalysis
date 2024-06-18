@@ -88,9 +88,11 @@ while selecting_files
             DATA.drugType = drugType;
             DATA.drugConc = drugConc;
         end
+        figure('Position', [100, 100, 1200, 1000]);
+        % clf;
 
         for loop = 1:numindexes
-            close all;
+            % close all;
             current_index = condind(loop);
             ExpCondition = condOrder{current_index};
             ExpCondition_text = ExpCondition;
@@ -117,7 +119,7 @@ while selecting_files
             normTraceAll = zeros(size(TraceAll));
             selected_one = false;
             stimInten = condInten{current_index};
-            figure;
+            
 
             for traceInd = 1:nTraces
                 Trace = squeeze(TraceAll(traceInd, :));
@@ -192,7 +194,7 @@ while selecting_files
                     DATA.(ExpCondition_text).StimInten = stimInten;
                     DATA.(ExpCondition_text).TTL = single(TTL);
 
-                    index = 1:nTraces;
+                    index = 1:nTracmnm, .0es;
                     tracestokeep = ismember(index, tracesToDelete);
                     tracestokeep = index(~tracestokeep);
                     keepTraceMean = mean(TraceAll(tracestokeep, :));
@@ -213,6 +215,7 @@ while selecting_files
                     DATA.(ExpCondition_text).slopes = single(Slopes);
                     DATA.(ExpCondition_text).taus = single(tau);
                     DATA.(ExpCondition_text).epspPeaks = single(Peaks);
+                    
                     end
                 else
                     DATA.(ExpCondition_text).TraceAll = single(TraceAll);
