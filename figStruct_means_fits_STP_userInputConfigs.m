@@ -54,36 +54,70 @@ configs = {
 cellTypes = {'1. L6indx','2. L12indx', '3. E12indx', '4. pyrIndxL6', '5. pyrIndxL12', '6. pyrIndxE12', '7. ChR2IndxL6','8. ChR2IndxL12' }
 idx = input('Which index would you like to use: ChR2IndxE12, ChR2IndxL12')
 
-[params] = getUserInput(1)
-% load('epspMETA_fits.mat', 'epspMETA');
-load('epspMETA_fits.mat');
-for i = 1:length(configs)
-    idx = eval(configs{i}{1});
-    idxName = configs{i}{2};
-    traceName = configs{i}{3};
-    ampName =configs{i}{4};
-    slopeName = configs{i}{5};
-    tauName = configs{i}{6};
-    peakName=configs{i}{7};
 
-    [n, idxName, traceName, traceData, epspAmps, slope, tau, epspPeaks] = ...
-        formatGroupData(epspMETA, idx, idxName, traceName,ampName,slopeName,tauName, peakName);
+numConfigs =input('How many cell types would you like to compare:?');
+for i= numConfigs
+    [training, cellType, pulses, lightS, lightC, params]= getUserInput(i)
+
+
+    % training(i) = training;
+    % cellType(i) = cellType;
+    % pulses(i) = pulses;
+    % lightS(i) = lightS;
+    % lightC(i) = lightC;
+    % [index,name,traceName,ampName,slopeName,tauName,peakName] = constructConfigs (training(i), cellType(i), pulses(i), lightS(i), lightC(i))
+
+    [config,index,name,traceName,ampName,slopeName,tauName,peakName] = constructConfigs(training, cellType, pulses, lightS, lightC)
+    index = eval(index);
+
+
+    % [training1, cellType1, pulses1, lightS1, lightC1, params1]= getUserInput(1)
+    % [training2, cellType2, pulses2, lightS2, lightC2, params2]= getUserInput(2)
+
+    IGNORE = true;
+    % [training, cellType, pulses, lightS, lightC] = getUserInputList(1)
+
+
+    % [index,name,traceName,ampName,slopeName,tauName,peakName] = constructConfigs (training(i), cellType(i), pulses(i), lightS(i), lightC(i))
+    % config2 = constructConfigs (training2, cellType2, pulses2, lightS2, lightC2)
+
+    % (index,name,traceName,ampName,slopeName,tauName,peakName)
+    % configs =2;
+
+
+
+    % load('epspMETA_fits.mat', 'epspMETA');
+    % load('epspMETA_fits.mat');
+
+
+    [n, name,  traceData, epspAmps, slope, tau, epspPeaks] = ...
+        formatGroupData(epspMETA, index, name, traceName,ampName,slopeName,tauName, peakName);
+
+
+    n = n;
+    cellTrain = name;
+    stimName = lightCon;
+    % traceData = traceData;
+    epspAmps = epspAmps;
+    Slope = slope;
+    Tau = tau;
+    epspPeaks = epspPeaks;
 
 
     %pull name for storage
-    stimName = split(traceName, '_');
-    stimName = strcat(stimName{1}, '_', stimName{2});
+    % stimName = split(traceName, '_');
+    % stimName = strcat(stimName{1}, '_', stimName{2});
 
     % add to structure
-
-    meanPlots(i).n = n;
-    meanPlots(i).cellTrain = idxName;
-    meanPlots(i).stimName = stimName;
-    meanPlots(i).traceData = traceData;
-    meanPlots(i).epspAmps = epspAmps;
-    meanPlots(i).Slope = slope;
-    meanPlots(i).Tau = tau;
-    meanPlots(i).epspPeaks = epspPeaks;
+    % 
+    % meanPlots(i).n = n;
+    % meanPlots(i).cellTrain = name;
+    % meanPlots(i).stimName = stimName;
+    % meanPlots(i).traceData = traceData;
+    % meanPlots(i).epspAmps = epspAmps;
+    % meanPlots(i).Slope = slope;
+    % meanPlots(i).Tau = tau;
+    % meanPlots(i).epspPeaks = epspPeaks;
 
 
     % end
@@ -92,37 +126,43 @@ for i = 1:length(configs)
     %
     %     trace = meanPlots(i).traceData;
 
-%%normalize trace data
+    %%normalize trace data
     trace = traceData;
     if ~isempty(trace)
         [meanTrace,normMeanTrace, zeroTraces, normZeroTraces] = normMeanData(trace);
-        meanPlots(i).meanTrace = meanTrace;
-        meanPlots(i).normMeanTrace = normMeanTrace;
-        meanPlots(i).zeroTraces = zeroTraces;
-        meanPlots(i).normZeroTraces = normZeroTraces;
-%%do STP fits
+
+
+        meanTrace(i) = meanTrace;
+        normMeanTrace(i) = normMeanTrace;
+        zeroTraces(i) = zeroTraces;
+        normZeroTraces(i) = normZeroTraces;
+
+        % meanPlots(i).meanTrace = meanTrace;
+        % meanPlots(i).normMeanTrace = normMeanTrace;
+        % meanPlots(i).zeroTraces = zeroTraces;
+        % meanPlots(i).normZeroTraces = normZeroTraces;
+        %%do STP fits
         % while keepFitting == true;
         %     peaks = epspAmps;
-        % 
-        % 
-        % 
+        %
+        %
+        %
         %     [coef, fitTrace, R1, r2] = TsodyksFit(peaks,spikeTimes,synapseTaus,normTrace,GUESS);
         %     [FLAG, keepFitting, newGUESS] = stp_refit (GUESS);
         %     Rval = R1';
-        % 
+        %
         %     GUESS = newGUESS
         %     % disp (r2);
-        % 
-        % 
+        %
+        %
         % end
     end
 end
 
+    %%%%% only load above part once, to plot start here%%%%
 
-%%%%% only load above part once, to plot start here%%%%
-
-options = arrayfun(@(x) x.cellTrain, meanPlots, 'UniformOutput', false);
-stimulus = arrayfun(@(x) x.stimName, meanPlots, 'UniformOutput', false);
-save('meanPlots.mat','meanPlots', 'E12indx','L12indx','L6indx','ChR2IndxL6', 'ChR2IndxL12', 'ChR2IndxE12', 'pyrIndxL6', 'pyrIndxL12', 'pyrIndxE12','options','stimulus');
+    options = arrayfun(@(x) x.cellTrain, meanPlots, 'UniformOutput', false);
+    stimulus = arrayfun(@(x) x.stimName, meanPlots, 'UniformOutput', false);
+    save('meanPlots.mat','meanPlots', 'E12indx','L12indx','L6indx','ChR2IndxL6', 'ChR2IndxL12', 'ChR2IndxE12', 'pyrIndxL6', 'pyrIndxL12', 'pyrIndxE12','options','stimulus');
 
 

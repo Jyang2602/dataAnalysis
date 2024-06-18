@@ -1,5 +1,6 @@
 %% show user options of which cell types, training, and stimulus are curretnly available in meanPlots structure%
 load('meanPlots.mat');
+load(epspME)
 disp('Please select which cell types/training and stimulus combo you would like to plot: ')
 for i = 1:length(options)
 fprintf('%d: %s %s\n', i, options{i}, stimulus{i});

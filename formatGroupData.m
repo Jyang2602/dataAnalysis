@@ -1,5 +1,5 @@
 
-function[n, idxName, traceName, traceData, epspAmps, slope, tau, epspPeaks] = ...
+function[n, idxName,  traceData, epspAmps, slope, tau, epspPeaks] = ...
     formatGroupData(epspMETA, idx, idxName, traceName,ampName,slopeName,tauName, peakName)
 
 
@@ -32,7 +32,7 @@ n = num2str(n);
 traceData = cellfun(@(x) x(1:20000), traceData, 'UniformOutput', false);
 traceData = cell2mat(traceData');
 
-TTL =
+% TTL =
 
 smootheTTL = medfilt1(TTL, windowSize);
 [peaks, onsets] = findpeaks(smootheTTL, 'MinPeakHeight', 10);
